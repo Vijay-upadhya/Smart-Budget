@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}History — Smart Budget{% endblock %}
+{% block page_title %}Expense History{% endblock %}
+{% block page_sub %}All recorded transactions{% endblock %}
+{% block tb_pill %}All Time{% endblock %}
+
+{% block content %}
+
+{% if grouped_expenses %}
+
+  {# ── Summary header bar ── #}
+  {% set total_all = grouped_expenses | sum(attribute='total') %}
+  {% set highest = grouped_expenses | sort(attribute='total') | last %}
+  <div class="g2 mb-5">
+
+    <div class="card" style="border-color:rgba(124,111,255,.2);">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:46px;height:46px;background:var(--accent-dim);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">💼</div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:4px;">All-Time Total</div>
+          <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent2);">
+            {{ "%.2f"|format(total_all) }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(255,184,48,.2);">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:46px;height:46px;background:var(--amber-dim);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">🏆</div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:4px;">Highest Spending Day</div>
+          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--amber);">
+            {{ highest.date.strftime('%d %b %Y') }}
+            <span style="font-size:14px;color:var(--text2);font-weight:500;">—</span>
+            {{ "%.2f"|format(highest.total) }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Daily expense groups ── #}
+  {% for group in grouped_expenses %}
+  <div class="card mb-4" style="{% if group.is_highest %}border-color:rgba(255,184,48,.3);{% endif %}">
+
+    {# Group header #}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);">
+            {{ group.date_str }}
+          </div>
+          {% if group.is_highest %}
+          <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:100px;
+            background:rgba(255,184,48,.15);color:var(--amber);border:1px solid rgba(255,184,48,.25);">
+            🏆 Highest Day
+          </span>
+          {% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">
+          {{ group.expenses | length }} transaction{{ 's' if group.expenses|length != 1 else '' }}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:3px;">Day Total</div>
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;
+          color:{% if group.is_highest %}var(--amber){% else %}var(--teal){% endif %};">
+          {{ group.expenses[0].currency }} {{ "%.2f"|format(group.total) }}
+        </div>
+      </div>
+    </div>
+
+    {# Transactions for this day #}
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Note</th>
+            <th>Cur.</th>
+            <th class="tr">Amount</th>
+            <th class="tr">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exp in group.expenses %}
+          <tr>
+            <td><span class="cat-pill">{{ exp.category }}</span></td>
+            <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              {{ exp.note or '—' }}
+            </td>
+            <td><span class="cur-pill cur-{{ exp.currency }}">{{ exp.currency }}</span></td>
+            <td class="tr fw7" style="font-family:'Syne',sans-serif;">{{ "%.2f"|format(exp.amount) }}</td>
+            <td class="tr">
+              <form method="POST" action="{{ url_for('main.delete_expense', expense_id=exp.id) }}"
+                    onsubmit="return confirm('Delete this expense?')" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="empty">
+    <div class="ei">📭</div>
+    <div class="et">No expenses recorded yet.</div>
+    <div class="mt-4">
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Go to Dashboard →</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

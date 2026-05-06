@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Comparison — Smart Budget{% endblock %}
+{% block page_title %}Monthly Comparison{% endblock %}
+{% block page_sub %}{{ comparison.previous_label }} vs {{ comparison.current_label }}{% endblock %}
+{% block tb_pill %}Month-over-Month{% endblock %}
+
+{% block content %}
+
+{# ═══════════════════════════════════════
+   1. SUMMARY CARDS
+═══════════════════════════════════════ #}
+<div class="g2 mb-5">
+
+  <div class="card" style="border-color:rgba(124,111,255,.25);">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="width:50px;height:50px;background:var(--accent-dim);border-radius:12px;
+        display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">📅</div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:5px;">
+          {{ comparison.current_label }} — Current
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent2);">
+          {{ "%.2f"|format(comparison.current_total) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:rgba(20,224,176,.2);">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="width:50px;height:50px;background:var(--teal-dim);border-radius:12px;
+        display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">📆</div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:5px;">
+          {{ comparison.previous_label }} — Previous
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--teal);">
+          {{ "%.2f"|format(comparison.previous_total) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ═══════════════════════════════════════
+   2. DELTA BANNER
+═══════════════════════════════════════ #}
+{% set diff = comparison.current_total - comparison.previous_total %}
+<div class="card mb-5" style="padding:18px 24px;
+  border-color:{% if diff > 0 %}rgba(255,95,126,.25){% elif diff < 0 %}rgba(20,224,176,.25){% else %}var(--border){% endif %};">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div style="font-size:32px;">
+      {% if diff > 0 %}📈{% elif diff < 0 %}📉{% else %}➡️{% endif %}
+    </div>
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;
+        color:{% if diff > 0 %}var(--rose){% elif diff < 0 %}var(--teal){% else %}var(--text){% endif %};">
+        {% if diff > 0 %}
+          Spending increased by {{ "%.2f"|format(diff) }} this month
+        {% elif diff < 0 %}
+          Spending decreased by {{ "%.2f"|format(diff|abs) }} — great discipline! 🎉
+        {% else %}
+          No change from last month
+        {% endif %}
+      </div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px;">
+        {{ comparison.previous_label }}: <strong>{{ "%.2f"|format(comparison.previous_total) }}</strong>
+        &rarr;
+        {{ comparison.current_label }}: <strong>{{ "%.2f"|format(comparison.current_total) }}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════
+   3. GROUPED BAR CHART
+═══════════════════════════════════════ #}
+<div class="card mb-5">
+  <div class="card-hd">
+    <span class="card-title">Category Comparison — Grouped Bar Chart</span>
+    <span class="card-pill">{{ comparison.previous_label }} vs {{ comparison.current_label }}</span>
+  </div>
+  {% if comparison.categories %}
+  <div style="position:relative;height:380px;">
+    <canvas id="compChart"></canvas>
+  </div>
+  {% else %}
+  <div class="empty">
+    <div class="ei">📊</div>
+    <div class="et">No data for these months yet. Start adding expenses on the dashboard!</div>
+    <div class="mt-4">
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Go to Dashboard →</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{# ═══════════════════════════════════════
+   4. BREAKDOWN TABLE
+═══════════════════════════════════════ #}
+{% if comparison.categories %}
+<div class="card">
+  <div class="card-hd">
+    <span class="card-title">Category Breakdown</span>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th class="tr">{{ comparison.previous_label }}</th>
+          <th class="tr">{{ comparison.current_label }}</th>
+          <th class="tr">Δ Change</th>
+          <th class="tr">Trend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in range(comparison.categories | length) %}
+        {% set cat  = comparison.categories[i] %}
+        {% set prev = comparison.previous[i] %}
+        {% set curr = comparison.current[i] %}
+        {% set delta = curr - prev %}
+        <tr>
+          <td><span class="cat-pill">{{ cat }}</span></td>
+          <td class="tr text-teal fw7">{{ "%.2f"|format(prev) }}</td>
+          <td class="tr text-purple fw7">{{ "%.2f"|format(curr) }}</td>
+          <td class="tr fw7" style="color:{% if delta > 0 %}var(--rose){% elif delta < 0 %}var(--teal){% else %}var(--text3){% endif %};">
+            {% if delta > 0 %}+{% endif %}{{ "%.2f"|format(delta) }}
+          </td>
+          <td class="tr" style="font-size:18px;">
+            {% if delta > 0 %}📈{% elif delta < 0 %}📉{% else %}➡️{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  Chart.defaults.color       = '#7e8ca6';
+  Chart.defaults.borderColor = '#1f2535';
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+
+  const canvas = document.getElementById('compChart');
+  if (!canvas) return;
+
+  const categories = {{ comparison.categories | tojson }};
+  const prevData   = {{ comparison.previous   | tojson }};
+  const currData   = {{ comparison.current    | tojson }};
+  const prevLabel  = {{ comparison.previous_label | tojson }};
+  const currLabel  = {{ comparison.current_label  | tojson }};
+  if (!categories.length) return;
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: categories,
+      datasets: [
+        {
+          label: prevLabel,
+          data:  prevData,
+          backgroundColor: 'rgba(20,224,176,0.55)',
+          borderColor:     '#14e0b0',
+          borderWidth: 1, borderRadius: 6, borderSkipped: false,
+        },
+        {
+          label: currLabel,
+          data:  currData,
+          backgroundColor: 'rgba(124,111,255,0.55)',
+          borderColor:     '#7c6fff',
+          borderWidth: 1, borderRadius: 6, borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { padding: 20, font: { size: 13 }, usePointStyle: true, pointStyleWidth: 10 }
+        },
+        tooltip: {
+          backgroundColor: '#0e1117', borderColor: '#252d3d', borderWidth: 1,
+          titleColor: '#edf0f8', bodyColor: '#7e8ca6',
+        }
+      },
+      scales: {
+        x: { grid: { color: '#1b2130' }, ticks: { font: { size: 11 }, maxRotation: 30 } },
+        y: { grid: { color: '#1b2130' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}
